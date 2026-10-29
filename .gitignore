@@ -1,0 +1,12 @@
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local database and generated evaluation artifacts
+src/storage/wme.db
+src/storage/datasets/
+src/storage/models/
