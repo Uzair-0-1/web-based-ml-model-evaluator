@@ -11,7 +11,23 @@ from sklearn.metrics import (
     explained_variance_score,
     max_error
 )
+def _validate_metric_inputs(y_true, y_pred):
+    """Validate target and prediction arrays before metric calculation."""
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
 
+    if y_true.size == 0 or y_pred.size == 0:
+        raise ValueError("y_true and y_pred must not be empty.")
+
+    if y_true.ndim != 1 or y_pred.ndim != 1:
+        raise ValueError("y_true and y_pred must be one-dimensional.")
+
+    if len(y_true) != len(y_pred):
+        raise ValueError(
+            "y_true and y_pred must contain the same number of samples."
+        )
+
+    return y_true, y_pred
 class MetricCalculator:
     """
     Computes standard evaluation metrics for Classification and Regression models (WME-F-010, WME-F-011).
@@ -23,8 +39,7 @@ class MetricCalculator:
         Calculates classification metrics: accuracy, precision, recall, f1-score (macro/micro/weighted),
         per-class metrics, and confusion matrix data (WME-F-010, TC-Metric-01).
         """
-        y_true = np.asarray(y_true)
-        y_pred = np.asarray(y_pred)
+        y_true, y_pred = _validate_metric_inputs(y_true, y_pred)
 
         unique_labels = sorted(list(set(np.concatenate([y_true, y_pred]))))
         labels_str = [str(l) for l in unique_labels]
@@ -85,8 +100,9 @@ class MetricCalculator:
         """
         Calculates regression metrics: MAE, MSE, RMSE, R2-score, Max Error, Explained Variance (WME-F-011, TC-Metric-02).
         """
-        y_true = np.asarray(y_true, dtype=float)
-        y_pred = np.asarray(y_pred, dtype=float)
+        y_true, y_pred = _validate_metric_inputs(y_true, y_pred)
+        y_true = y_true.astype(float)
+        y_pred = y_pred.astype(float)
 
         mae = float(mean_absolute_error(y_true, y_pred))
         mse = float(mean_squared_error(y_true, y_pred))
