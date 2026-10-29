@@ -617,7 +617,12 @@
         body: isFormData ? body : (body ? JSON.stringify(body) : null)
       };
 
-      const res = await fetch(endpoint, options);
+      let res;
+      try {
+        res = await fetch(endpoint, options);
+      } catch (error) {
+        throw new Error("Could not reach the server. Check that the app is running, then try again.");
+      }
       if (res.status === 401) {
         // Session expired
         state.token = null;
@@ -629,9 +634,21 @@
         throw new Error("Unauthorized");
       }
 
-      const data = await res.json().catch(() => ({}));
+      const responseText = await res.text();
+      let data = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (error) {
+          data = { detail: responseText };
+        }
+      }
       if (!res.ok) {
-        throw new Error(data.detail || "Request failed");
+        const detail = data.detail || data.message;
+        const message = Array.isArray(detail)
+          ? detail.map(item => item.msg || JSON.stringify(item)).join("; ")
+          : (typeof detail === "string" ? detail : `Request failed (${res.status})`);
+        throw new Error(message);
       }
       return data;
     }
@@ -782,6 +799,9 @@
         await fastLogin('evaluator', 'Eval@123');
         return;
       }
+      const tableBody = document.getElementById("dashRecentRuns");
+      tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-slate-400">Loading dashboard data...</td></tr>`;
+
       try {
         const models = await apiRequest("/api/models");
         const datasets = await apiRequest("/api/datasets");
@@ -794,7 +814,6 @@
         document.getElementById("dashCountDatasets").textContent = datasets.length;
         document.getElementById("dashCountEvaluations").textContent = history.length;
 
-        const tableBody = document.getElementById("dashRecentRuns");
         if (history.length === 0) {
           tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-slate-400">No evaluations yet. Load demo data or create an evaluation to begin!</td></tr>`;
           return;
@@ -828,7 +847,9 @@
         }).join("");
 
       } catch (err) {
-        console.error(err);
+        console.error("Dashboard could not be loaded:", err);
+        document.getElementById("dashRecentRuns").innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-600">Could not load dashboard data: ${err.message}. Use Refresh to try again.</td></tr>`;
+        showAlert(`Dashboard could not be loaded: ${err.message}`, "error");
       }
     }
 
@@ -1040,19 +1061,36 @@
 
     async function handleStartEvaluation(e) {
       e.preventDefault();
-      const name = document.getElementById("evalNameInput").value;
+      const nameInput = document.getElementById("evalNameInput");
+      const name = nameInput.value.trim();
       const model_id = document.getElementById("evalModelSelect").value;
       const dataset_id = document.getElementById("evalDatasetSelect").value;
       const eval_type = document.getElementById("evalTypeSelect").value;
       const target_column = document.getElementById("evalTargetSelect").value;
+      const button = document.getElementById("btnExecuteEval");
+      const originalButtonText = button.innerHTML;
 
-      const checkedFeatures = Array.from(document.querySelectorAll("input[name='feature_col']:checked")).map(cb => cb.value).filter(c => c !== target_column);
-
-      if (checkedFeatures.length === 0) {
-        showAlert("Please select at least one feature column.", "error");
+      if (!name) {
+        showAlert("Enter a title for this evaluation.", "error");
+        nameInput.focus();
+        return;
+      }
+      if (!model_id || !dataset_id || !target_column) {
+        showAlert("Select a model, dataset, and target column before running the evaluation.", "error");
         return;
       }
 
+      const checkedFeatures = Array.from(document.querySelectorAll("input[name='feature_col']:checked"))
+        .map(cb => cb.value)
+        .filter(column => column !== target_column);
+      if (checkedFeatures.length === 0) {
+        showAlert("Select at least one feature column other than the target column.", "error");
+        return;
+      }
+
+      button.disabled = true;
+      button.classList.add("opacity-60", "cursor-not-allowed");
+      button.innerHTML = `<span>⏳ Running evaluation...</span>`;
       try {
         showAlert("Configuring evaluation job...", "success");
         const evalConfig = await apiRequest("/api/evaluations", "POST", {
@@ -1064,12 +1102,16 @@
           feature_columns: checkedFeatures
         });
 
-        showAlert("Executing evaluation run in secure sandbox...", "success");
+        showAlert("Executing evaluation run. This may take a moment...", "success");
         await apiRequest(`/api/evaluations/${evalConfig.id}/run`, "POST");
         showAlert("Evaluation run completed successfully!");
-        viewEvaluationDetails(evalConfig.id);
+        await viewEvaluationDetails(evalConfig.id);
       } catch (err) {
-        showAlert(err.message, "error");
+        showAlert(`Evaluation could not be completed: ${err.message}`, "error");
+      } finally {
+        button.disabled = false;
+        button.classList.remove("opacity-60", "cursor-not-allowed");
+        button.innerHTML = originalButtonText;
       }
     }
 
