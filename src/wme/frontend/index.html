@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Based ML Model Evaluator (WME)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- Header & Top Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow">
+          W
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-slate-900">WME</span>
+          <span class="text-xs ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 font-semibold rounded-full">Problem #25</span>
+          <p class="text-xs text-slate-500">Web Based ML Model Evaluator</p>
+        </div>
+      </div>
+
+      <!-- Auth info & quick actions -->
+      <div class="flex items-center space-x-4" id="authSection">
+        <!-- Injected dynamically: User badge or Login button -->
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-100">
+      <nav class="flex space-x-6 overflow-x-auto text-sm" id="navTabs">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium tab-active">📊 Dashboard</button>
+        <button onclick="switchTab('models')" id="tab-models" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">🤖 Models</button>
+        <button onclick="switchTab('datasets')" id="tab-datasets" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">📁 Datasets</button>
+        <button onclick="switchTab('evaluator')" id="tab-evaluator" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">⚙️ New Evaluation</button>
+        <button onclick="switchTab('results')" id="tab-results" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">📈 Results</button>
+        <button onclick="switchTab('comparison')" id="tab-comparison" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">⚖️ Comparison</button>
+        <button onclick="switchTab('history')" id="tab-history" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium">📜 History & Reports</button>
+        <button onclick="switchTab('admin')" id="tab-admin" class="py-3 px-1 text-slate-600 hover:text-blue-600 font-medium hidden">🛡️ Admin & Audit</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  <div id="alertBox" class="hidden max-w-7xl mx-auto px-4 mt-4 w-full">
+    <div id="alertContent" class="p-4 rounded-md text-sm font-medium"></div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- 1. DASHBOARD TAB -->
+    <div id="view-dashboard" class="space-y-6">
+      <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 rounded-2xl p-8 text-white shadow-lg">
+        <div class="max-w-3xl">
+          <h1 class="text-3xl font-extrabold tracking-tight">Evaluate Trained ML Models with Confidence</h1>
+          <p class="mt-3 text-blue-100 text-base leading-relaxed">
+            Upload your scikit-learn models and test datasets, validate compatibility, run sandboxed evaluations, compute trusted metrics (Accuracy, Precision, Recall, F1, MAE, MSE, RMSE), visualize ROC/PR curves and Confusion Matrices, and export official reports.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <button onclick="seedDemoData()" class="bg-white text-blue-700 hover:bg-blue-50 font-semibold px-4 py-2 rounded-lg shadow-sm transition">
+              ✨ 1-Click Load Demo Models & Datasets
+            </button>
+            <button onclick="switchTab('evaluator')" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg border border-blue-400 transition">
+              🚀 Start Evaluation
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Summary Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Models Stored</p>
+            <h3 id="dashCountModels" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+          </div>
+          <span class="text-3xl">🤖</span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datasets Stored</p>
+            <h3 id="dashCountDatasets" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+          </div>
+          <span class="text-3xl">📁</span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Evaluations Run</p>
+            <h3 id="dashCountEvaluations" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+          </div>
+          <span class="text-3xl">⚡</span>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sandbox Security</p>
+            <h3 class="text-xl font-bold text-green-600 mt-1">Enforced</h3>
+          </div>
+          <span class="text-3xl">🛡️</span>
+        </div>
+      </div>
+
+      <!-- Recent Evaluations Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h2 class="text-lg font-bold text-slate-800">Recent Evaluations</h2>
+          <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:underline">Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3">Run Name</th>
+                <th class="px-6 py-3">Model</th>
+                <th class="px-6 py-3">Dataset</th>
+                <th class="px-6 py-3">Type</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Key Metric</th>
+                <th class="px-6 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dashRecentRuns" class="divide-y divide-slate-200">
+              <tr><td colspan="7" class="px-6 py-4 text-center text-slate-400">No evaluations yet. Start by loading sample data or configuring a run.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. MODELS TAB -->
+    <div id="view-models" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Upload Card -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-bold text-slate-800">Upload Trained ML Model</h2>
+          <p class="text-xs text-slate-500">Supports .pkl, .joblib, .pt, and .onnx. Model will be validated for readable architecture and predict methods.</p>
+
+          <form id="modelUploadForm" onsubmit="handleModelUpload(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Model Name</label>
+              <input type="text" id="modelNameInput" required placeholder="e.g. Random Forest Classifier" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Model Artifact File</label>
+              <input type="file" id="modelFileInput" required accept=".pkl,.joblib,.pt,.pth,.onnx" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+            </div>
+            <button type="submit" id="btnUploadModel" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm shadow transition">
+              Upload & Validate Model
+            </button>
+          </form>
+        </div>
+
+        <!-- Models List -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-slate-800">Registered Models</h2>
+            <button onclick="loadModels()" class="text-sm text-blue-600 hover:underline">Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="px-6 py-3">Name</th>
+                  <th class="px-6 py-3">Framework</th>
+                  <th class="px-6 py-3">Type</th>
+                  <th class="px-6 py-3">Features</th>
+                  <th class="px-6 py-3">Size</th>
+                  <th class="px-6 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="modelsTableBody" class="divide-y divide-slate-200">
+                <tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">Loading models...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. DATASETS TAB -->
+    <div id="view-datasets" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Upload Card -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-bold text-slate-800">Upload Evaluation Dataset</h2>
+          <p class="text-xs text-slate-500">Supports .csv, .json, and .parquet. Schema and data types will be automatically parsed.</p>
+
+          <form id="datasetUploadForm" onsubmit="handleDatasetUpload(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Dataset Name</label>
+              <input type="text" id="datasetNameInput" required placeholder="e.g. Iris Test Dataset" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Dataset File</label>
+              <input type="file" id="datasetFileInput" required accept=".csv,.json,.parquet" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+            </div>
+            <button type="submit" id="btnUploadDataset" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm shadow transition">
+              Upload & Validate Dataset
+            </button>
+          </form>
+        </div>
+
+        <!-- Datasets List -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-slate-800">Registered Datasets</h2>
+            <button onclick="loadDatasets()" class="text-sm text-blue-600 hover:underline">Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="px-6 py-3">Name</th>
+                  <th class="px-6 py-3">Rows</th>
+                  <th class="px-6 py-3">Columns</th>
+                  <th class="px-6 py-3">File Size</th>
+                  <th class="px-6 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="datasetsTableBody" class="divide-y divide-slate-200">
+                <tr><td colspan="5" class="px-6 py-4 text-center text-slate-400">Loading datasets...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dataset Preview Modal / Container -->
+      <div id="datasetPreviewCard" class="hidden bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 id="previewTitle" class="text-base font-bold text-slate-800">Dataset Preview</h3>
+          <button onclick="document.getElementById('datasetPreviewCard').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕ Close</button>
+        </div>
+        <div id="previewColumnsInfo" class="flex flex-wrap gap-2 text-xs"></div>
+        <div class="overflow-x-auto max-h-72 border rounded-lg">
+          <table class="w-full text-left text-xs" id="previewTable"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. EVALUATION WIZARD TAB -->
+    <div id="view-evaluator" class="space-y-6 hidden">
+      <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-md space-y-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Configure ML Evaluation Run</h2>
+          <p class="text-xs text-slate-500 mt-1">Pair a validated model with an evaluation dataset, check compatibility, configure targets and metrics, and execute.</p>
+        </div>
+
+        <form id="evaluationForm" onsubmit="handleStartEvaluation(event)" class="space-y-5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Evaluation Run Title</label>
+            <input type="text" id="evalNameInput" required placeholder="e.g. Iris Random Forest Baseline Test" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Select Model</label>
+              <select id="evalModelSelect" onchange="onModelOrDatasetChange()" required class="w-full px-3 py-2 text-sm border rounded-lg bg-white outline-none">
+                <option value="">-- Choose Model --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Select Dataset</label>
+              <select id="evalDatasetSelect" onchange="onModelOrDatasetChange()" required class="w-full px-3 py-2 text-sm border rounded-lg bg-white outline-none">
+                <option value="">-- Choose Dataset --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Compatibility Status Badge -->
+          <div id="compatStatusBox" class="hidden p-4 rounded-xl border text-sm"></div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Evaluation Task Type</label>
+              <select id="evalTypeSelect" required class="w-full px-3 py-2 text-sm border rounded-lg bg-white outline-none">
+                <option value="classification">Classification (Accuracy, Precision, Recall, F1)</option>
+                <option value="regression">Regression (MAE, MSE, RMSE, R2)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Ground Truth / Target Column</label>
+              <select id="evalTargetSelect" required class="w-full px-3 py-2 text-sm border rounded-lg bg-white outline-none">
+                <option value="">-- Select Target Column --</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Feature Columns (Selected for input)</label>
+            <div id="evalFeaturesBox" class="border rounded-lg p-3 max-h-40 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs bg-slate-50">
+              <span class="text-slate-400">Select model and dataset to populate features</span>
+            </div>
+          </div>
+
+          <button type="submit" id="btnExecuteEval" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+            <span>🚀 Execute Model Evaluation</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 5. RESULTS & VISUALIZATIONS TAB -->
+    <div id="view-results" class="space-y-6 hidden">
+      <div id="resultsEmpty" class="text-center py-16 bg-white rounded-xl border border-slate-200">
+        <span class="text-5xl">📊</span>
+        <h3 class="mt-3 text-lg font-bold text-slate-700">No Evaluation Selected</h3>
+        <p class="text-sm text-slate-400 mt-1">Execute an evaluation from the wizard or select one from history to inspect metrics and plots.</p>
+      </div>
+
+      <div id="resultsContent" class="hidden space-y-6">
+        <!-- Header summary -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div class="flex items-center space-x-3">
+              <h2 id="resEvalName" class="text-2xl font-extrabold text-slate-800">Evaluation Results</h2>
+              <span id="resStatusBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">COMPLETED</span>
+            </div>
+            <p id="resSubtitle" class="text-xs text-slate-500 mt-1"></p>
+          </div>
+          <!-- Download Buttons -->
+          <div class="flex items-center space-x-2">
+            <a id="btnDownloadHtml" target="_blank" class="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200 transition">
+              📄 Download HTML Report
+            </a>
+            <a id="btnDownloadMd" target="_blank" class="px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold border border-slate-300 transition">
+              📝 Markdown
+            </a>
+            <a id="btnDownloadJson" target="_blank" class="px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold border border-slate-300 transition">
+              📦 JSON
+            </a>
+          </div>
+        </div>
+
+        <!-- Metrics Cards Grid -->
+        <div id="metricsCardsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+
+        <!-- Visualizations Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="plotContainer1" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 id="plotTitle1" class="text-sm font-bold text-slate-700 mb-3">Confusion Matrix</h3>
+            <img id="plotImg1" class="w-full h-auto rounded-lg border border-slate-100" alt="Plot 1">
+          </div>
+          <div id="plotContainer2" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 id="plotTitle2" class="text-sm font-bold text-slate-700 mb-3">ROC Curve</h3>
+            <img id="plotImg2" class="w-full h-auto rounded-lg border border-slate-100" alt="Plot 2">
+          </div>
+        </div>
+
+        <!-- Sample Predictions Table -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200">
+            <h3 class="text-base font-bold text-slate-800">Sample Predictions (Ground Truth vs Model Output)</h3>
+          </div>
+          <div class="overflow-x-auto max-h-80">
+            <table class="w-full text-left text-xs text-slate-600">
+              <thead class="bg-slate-50 text-slate-500 uppercase sticky top-0 border-b border-slate-200">
+                <tr>
+                  <th class="px-6 py-3">Row #</th>
+                  <th class="px-6 py-3">Actual Value</th>
+                  <th class="px-6 py-3">Predicted Value</th>
+                  <th class="px-6 py-3">Match / Error</th>
+                </tr>
+              </thead>
+              <tbody id="predictionsSampleBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. MODEL COMPARISON TAB -->
+    <div id="view-comparison" class="space-y-6 hidden">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-bold text-slate-800">Multi-Model Comparative Analysis</h2>
+        <p class="text-xs text-slate-500">Select two or more completed evaluation runs to compare side-by-side performance metrics.</p>
+
+        <div id="comparisonSelectorList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+
+        <button onclick="runComparison()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm shadow transition">
+          ⚖️ Compare Selected Evaluations
+        </button>
+      </div>
+
+      <!-- Comparison Results Box -->
+      <div id="comparisonResultsBox" class="hidden space-y-6">
+        <!-- Winner Banner -->
+        <div id="comparisonWinnersBox" class="p-5 bg-blue-50 border border-blue-200 rounded-xl"></div>
+
+        <!-- Comparison Table -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200">
+            <h3 class="text-base font-bold text-slate-800">Metric Breakdown Table</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600" id="comparisonTable"></table>
+          </div>
+        </div>
+
+        <!-- Comparison Bar Chart Canvas -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-slate-800 mb-4">Metric Comparison Chart</h3>
+          <div class="h-80 w-full">
+            <canvas id="comparisonChartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. HISTORY TAB -->
+    <div id="view-history" class="space-y-6 hidden">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <h2 class="text-lg font-bold text-slate-800">Evaluation History & Archive</h2>
+          <div class="flex items-center space-x-3">
+            <select id="historyStatusFilter" onchange="loadHistory()" class="px-3 py-1.5 text-xs border rounded-lg bg-white">
+              <option value="">All Statuses</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="queued">Queued</option>
+            </select>
+            <button onclick="loadHistory()" class="text-xs text-blue-600 hover:underline">Refresh</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3">Title</th>
+                <th class="px-6 py-3">Model</th>
+                <th class="px-6 py-3">Dataset</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Date</th>
+                <th class="px-6 py-3 text-right">Reports & Inspection</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-200">
+              <tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">Loading history...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. ADMIN & AUDIT TAB -->
+    <div id="view-admin" class="space-y-6 hidden">
+      <!-- System Telemetry Health -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">System Telemetry & Resource Monitor</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="telemetryGrid">
+          <div class="p-4 bg-slate-50 rounded-lg border">
+            <p class="text-xs text-slate-400 font-semibold uppercase">CPU Usage</p>
+            <h4 id="telCpu" class="text-xl font-bold text-slate-800 mt-1">--%</h4>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-lg border">
+            <p class="text-xs text-slate-400 font-semibold uppercase">Memory Usage</p>
+            <h4 id="telMem" class="text-xl font-bold text-slate-800 mt-1">-- / -- MB</h4>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-lg border">
+            <p class="text-xs text-slate-400 font-semibold uppercase">Disk Storage Free</p>
+            <h4 id="telDisk" class="text-xl font-bold text-slate-800 mt-1">-- GB</h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Role Management -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200">
+          <h3 class="text-base font-bold text-slate-800">User Role Management (RBAC)</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3">Username</th>
+                <th class="px-6 py-3">Email</th>
+                <th class="px-6 py-3">Current Role</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3 text-right">Assign Role</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTableBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Audit Logs Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h3 class="text-base font-bold text-slate-800">Security Audit Logs (WME-SR-005)</h3>
+          <button onclick="loadAdminData()" class="text-xs text-blue-600 hover:underline">Refresh Logs</button>
+        </div>
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-slate-500 uppercase sticky top-0 border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-2">Timestamp</th>
+                <th class="px-4 py-2">Action</th>
+                <th class="px-4 py-2">Resource</th>
+                <th class="px-4 py-2">User</th>
+                <th class="px-4 py-2">Details</th>
+              </tr>
+            </thead>
+            <tbody id="adminAuditLogsBody" class="divide-y divide-slate-200 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Login / Register Modal -->
+  <div id="authModal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 id="authModalTitle" class="text-lg font-bold text-slate-900">Sign In to WME</h3>
+        <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+
+      <!-- Fast Role Switcher for Testing -->
+      <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-xs text-blue-800 font-semibold mb-2">⚡ 1-Click Fast Login for Testing:</p>
+        <div class="flex gap-2">
+          <button onclick="fastLogin('admin', 'Admin@123')" class="flex-1 py-1 px-2 text-xs font-semibold bg-white border border-blue-300 rounded hover:bg-blue-100 text-blue-700">
+            Admin
+          </button>
+          <button onclick="fastLogin('evaluator', 'Eval@123')" class="flex-1 py-1 px-2 text-xs font-semibold bg-white border border-blue-300 rounded hover:bg-blue-100 text-blue-700">
+            Evaluator
+          </button>
+          <button onclick="fastLogin('faculty', 'Faculty@123')" class="flex-1 py-1 px-2 text-xs font-semibold bg-white border border-blue-300 rounded hover:bg-blue-100 text-blue-700">
+            Faculty
+          </button>
+        </div>
+      </div>
+
+      <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+          <input type="text" id="authUsernameInput" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div id="authEmailField" class="hidden">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+          <input type="email" id="authEmailInput" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+          <input type="password" id="authPasswordInput" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div id="authRoleField" class="hidden">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Account Role</label>
+          <select id="authRoleInput" class="w-full px-3 py-2 text-sm border rounded-lg bg-white outline-none">
+            <option value="evaluator">User / Evaluator</option>
+            <option value="faculty">Project Guide / Faculty</option>
+            <option value="administrator">Administrator</option>
+          </select>
+        </div>
+        <button type="submit" id="btnAuthSubmit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm shadow transition">
+          Sign In
+        </button>
+      </form>
+
+      <div class="text-center pt-2 border-t">
+        <button onclick="toggleAuthMode()" id="btnToggleAuthMode" class="text-xs text-blue-600 hover:underline">
+          Don't have an account? Register here
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frontend JavaScript Logic -->
+  <script>
+    let state = {
+      token: localStorage.getItem("wme_token") || null,
+      user: JSON.parse(localStorage.getItem("wme_user") || "null"),
+      isRegisterMode: false,
+      models: [],
+      datasets: [],
+      history: [],
+      selectedEvaluation: null,
+      comparisonChart: null
+    };
+
+    function showAlert(message, type = "success") {
+      const box = document.getElementById("alertBox");
+      const content = document.getElementById("alertContent");
+      box.classList.remove("hidden");
+      if (type === "success") {
+        content.className = "p-4 rounded-md text-sm font-medium bg-green-50 text-green-800 border border-green-200";
+      } else {
+        content.className = "p-4 rounded-md text-sm font-medium bg-red-50 text-red-800 border border-red-200";
+      }
+      content.textContent = message;
+      setTimeout(() => { box.classList.add("hidden"); }, 5000);
+    }
+
+    async function apiRequest(endpoint, method = "GET", body = null, isFormData = false) {
+      const headers = {};
+      if (state.token) {
+        headers["Authorization"] = `Bearer ${state.token}`;
+      }
+      if (!isFormData && body) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const options = {
+        method,
+        headers,
+        body: isFormData ? body : (body ? JSON.stringify(body) : null)
+      };
+
+      const res = await fetch(endpoint, options);
+      if (res.status === 401) {
+        // Session expired
+        state.token = null;
+        state.user = null;
+        localStorage.removeItem("wme_token");
+        localStorage.removeItem("wme_user");
+        renderAuthUI();
+        showAlert("Session expired. Please log in again.", "error");
+        throw new Error("Unauthorized");
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || "Request failed");
+      }
+      return data;
+    }
+
+    // Tab switcher
+    function switchTab(tabName) {
+      const tabs = ["dashboard", "models", "datasets", "evaluator", "results", "comparison", "history", "admin"];
+      tabs.forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const tabEl = document.getElementById(`tab-${t}`);
+        if (viewEl) viewEl.classList.add("hidden");
+        if (tabEl) tabEl.classList.remove("tab-active");
+      });
+
+      const targetView = document.getElementById(`view-${tabName}`);
+      const targetTab = document.getElementById(`tab-${tabName}`);
+      if (targetView) targetView.classList.remove("hidden");
+      if (targetTab) targetTab.classList.add("tab-active");
+
+      // Tab load hooks
+      if (tabName === "dashboard") loadDashboard();
+      if (tabName === "models") loadModels();
+      if (tabName === "datasets") loadDatasets();
+      if (tabName === "evaluator") populateEvaluatorSelects();
+      if (tabName === "comparison") populateComparisonSelects();
+      if (tabName === "history") loadHistory();
+      if (tabName === "admin") loadAdminData();
+    }
+
+    // Auth UI handling
+    function renderAuthUI() {
+      const authSec = document.getElementById("authSection");
+      const adminTab = document.getElementById("tab-admin");
+
+      if (state.user && state.token) {
+        authSec.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <div class="text-right">
+              <span class="text-xs font-bold text-slate-800">${state.user.username}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold uppercase ${
+                state.user.role === 'administrator' ? 'bg-purple-100 text-purple-800' :
+                state.user.role === 'faculty' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+              }">${state.user.role}</span>
+            </div>
+            <button onclick="handleLogout()" class="text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
+              Sign Out
+            </button>
+          </div>
+        `;
+        if (state.user.role === "administrator") {
+          adminTab.classList.remove("hidden");
+        } else {
+          adminTab.classList.add("hidden");
+        }
+      } else {
+        authSec.innerHTML = `
+          <button onclick="openAuthModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm transition">
+            Sign In / Register
+          </button>
+        `;
+        adminTab.classList.add("hidden");
+      }
+    }
+
+    function openAuthModal() {
+      document.getElementById("authModal").classList.remove("hidden");
+    }
+
+    function closeAuthModal() {
+      document.getElementById("authModal").classList.add("hidden");
+    }
+
+    function toggleAuthMode() {
+      state.isRegisterMode = !state.isRegisterMode;
+      document.getElementById("authModalTitle").textContent = state.isRegisterMode ? "Register Account" : "Sign In to WME";
+      document.getElementById("btnAuthSubmit").textContent = state.isRegisterMode ? "Create Account" : "Sign In";
+      document.getElementById("btnToggleAuthMode").textContent = state.isRegisterMode ? "Already registered? Sign In" : "Don't have an account? Register here";
+      document.getElementById("authEmailField").classList.toggle("hidden", !state.isRegisterMode);
+      document.getElementById("authRoleField").classList.toggle("hidden", !state.isRegisterMode);
+    }
+
+    async function fastLogin(username, password) {
+      try {
+        const data = await apiRequest("/api/auth/login", "POST", { username, password });
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem("wme_token", data.token);
+        localStorage.setItem("wme_user", JSON.stringify(data.user));
+        closeAuthModal();
+        renderAuthUI();
+        showAlert(`Signed in as ${data.user.username} (${data.user.role})`);
+        loadDashboard();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const uname = document.getElementById("authUsernameInput").value;
+      const pwd = document.getElementById("authPasswordInput").value;
+
+      try {
+        if (state.isRegisterMode) {
+          const email = document.getElementById("authEmailInput").value;
+          const role = document.getElementById("authRoleInput").value;
+          await apiRequest("/api/auth/register", "POST", { username: uname, email, password: pwd, role });
+          showAlert("Registration successful! Logging you in...");
+        }
+        await fastLogin(uname, pwd);
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await apiRequest("/api/auth/logout", "POST");
+      } catch (err) {}
+      state.token = null;
+      state.user = null;
+      localStorage.removeItem("wme_token");
+      localStorage.removeItem("wme_user");
+      renderAuthUI();
+      showAlert("Logged out successfully");
+      switchTab("dashboard");
+    }
+
+    // 1-Click Demo Seed
+    async function seedDemoData() {
+      if (!state.token) {
+        await fastLogin('evaluator', 'Eval@123');
+      }
+      try {
+        showAlert("Seeding sample Iris and Diabetes models and datasets...", "success");
+        const res = await apiRequest("/api/demo/seed-sample-data", "POST");
+        showAlert(res.message);
+        loadDashboard();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Dashboard loader
+    async function loadDashboard() {
+      if (!state.token) {
+        // Fast login as default evaluator so dashboard works out of the box
+        await fastLogin('evaluator', 'Eval@123');
+        return;
+      }
+      try {
+        const models = await apiRequest("/api/models");
+        const datasets = await apiRequest("/api/datasets");
+        const history = await apiRequest("/api/history?limit=5");
+
+        state.models = models;
+        state.datasets = datasets;
+
+        document.getElementById("dashCountModels").textContent = models.length;
+        document.getElementById("dashCountDatasets").textContent = datasets.length;
+        document.getElementById("dashCountEvaluations").textContent = history.length;
+
+        const tableBody = document.getElementById("dashRecentRuns");
+        if (history.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-slate-400">No evaluations yet. Load demo data or create an evaluation to begin!</td></tr>`;
+          return;
+        }
+
+        tableBody.innerHTML = history.map(h => {
+          let metricDisplay = "N/A";
+          if (h.metrics) {
+            metricDisplay = h.eval_type === "classification" 
+              ? `Acc: ${(h.metrics.accuracy * 100).toFixed(1)}% | F1: ${(h.metrics.f1_score).toFixed(3)}`
+              : `RMSE: ${h.metrics.rmse} | R²: ${h.metrics.r2_score}`;
+          }
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="px-6 py-4 font-semibold text-slate-800">${h.name}</td>
+              <td class="px-6 py-4">${h.model_name || 'N/A'}</td>
+              <td class="px-6 py-4">${h.dataset_name || 'N/A'}</td>
+              <td class="px-6 py-4 capitalize">${h.eval_type}</td>
+              <td class="px-6 py-4">
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  h.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  h.status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                }">${h.status}</span>
+              </td>
+              <td class="px-6 py-4 font-mono text-xs">${metricDisplay}</td>
+              <td class="px-6 py-4 text-right">
+                <button onclick="viewEvaluationDetails('${h.id}')" class="text-xs text-blue-600 hover:underline font-bold">View Results &rarr;</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Models Manager
+    async function loadModels() {
+      try {
+        const models = await apiRequest("/api/models");
+        state.models = models;
+        const tbody = document.getElementById("modelsTableBody");
+        if (models.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">No models registered yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = models.map(m => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 font-semibold text-slate-800">${m.name}</td>
+            <td class="px-6 py-4">${m.framework}</td>
+            <td class="px-6 py-4 capitalize"><span class="px-2 py-0.5 rounded text-xs bg-slate-100 font-medium">${m.model_type}</span></td>
+            <td class="px-6 py-4">${m.metadata.n_features || 'Dynamic'}</td>
+            <td class="px-6 py-4 font-mono text-xs">${(m.file_size / 1024).toFixed(1)} KB</td>
+            <td class="px-6 py-4 text-right">
+              <button onclick="deleteModel('${m.id}')" class="text-xs text-red-600 hover:underline">Delete</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function handleModelUpload(e) {
+      e.preventDefault();
+      const name = document.getElementById("modelNameInput").value;
+      const file = document.getElementById("modelFileInput").files[0];
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("file", file);
+
+      try {
+        showAlert("Uploading and scanning model artifact...", "success");
+        await apiRequest("/api/models/upload", "POST", formData, true);
+        showAlert("Model validated and registered successfully!");
+        document.getElementById("modelUploadForm").reset();
+        loadModels();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function deleteModel(id) {
+      if (!confirm("Are you sure you want to delete this model?")) return;
+      try {
+        await apiRequest(`/api/models/${id}`, "DELETE");
+        showAlert("Model deleted successfully.");
+        loadModels();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Datasets Manager
+    async function loadDatasets() {
+      try {
+        const datasets = await apiRequest("/api/datasets");
+        state.datasets = datasets;
+        const tbody = document.getElementById("datasetsTableBody");
+        if (datasets.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-slate-400">No datasets uploaded yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = datasets.map(d => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 font-semibold text-slate-800">${d.name}</td>
+            <td class="px-6 py-4 font-mono">${d.row_count}</td>
+            <td class="px-6 py-4 font-mono">${d.column_count}</td>
+            <td class="px-6 py-4 font-mono text-xs">${(d.file_size / 1024).toFixed(1)} KB</td>
+            <td class="px-6 py-4 text-right space-x-2">
+              <button onclick="previewDataset('${d.id}')" class="text-xs text-blue-600 hover:underline">Inspect</button>
+              <button onclick="deleteDataset('${d.id}')" class="text-xs text-red-600 hover:underline">Delete</button>
+            </td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function handleDatasetUpload(e) {
+      e.preventDefault();
+      const name = document.getElementById("datasetNameInput").value;
+      const file = document.getElementById("datasetFileInput").files[0];
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("file", file);
+
+      try {
+        showAlert("Uploading and inspecting dataset structure...", "success");
+        await apiRequest("/api/datasets/upload", "POST", formData, true);
+        showAlert("Dataset validated and registered successfully!");
+        document.getElementById("datasetUploadForm").reset();
+        loadDatasets();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function previewDataset(id) {
+      try {
+        const ds = await apiRequest(`/api/datasets/${id}`);
+        document.getElementById("previewTitle").textContent = `Schema & Preview: ${ds.name} (${ds.row_count} rows, ${ds.column_count} columns)`;
+        
+        // Render column tags
+        const colContainer = document.getElementById("previewColumnsInfo");
+        colContainer.innerHTML = ds.columns.map(c => `
+          <span class="px-2 py-1 bg-slate-100 rounded text-slate-700 border">
+            <strong>${c.name}</strong> <span class="text-slate-400">(${c.dtype})</span>
+          </span>
+        `).join("");
+
+        // Render preview table
+        const pTable = document.getElementById("previewTable");
+        const cols = ds.columns.map(c => c.name);
+        let headerHtml = `<thead class="bg-slate-100"><tr>${cols.map(c => `<th class="p-2 border">${c}</th>`).join("")}</tr></thead>`;
+        let rowsHtml = `<tbody>${ds.preview.map(row => `
+          <tr class="hover:bg-slate-50">${cols.map(c => `<td class="p-2 border font-mono">${row[c] !== undefined ? row[c] : ''}</td>`).join("")}</tr>
+        `).join("")}</tbody>`;
+        pTable.innerHTML = headerHtml + rowsHtml;
+
+        document.getElementById("datasetPreviewCard").classList.remove("hidden");
+        document.getElementById("datasetPreviewCard").scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function deleteDataset(id) {
+      if (!confirm("Are you sure you want to delete this dataset?")) return;
+      try {
+        await apiRequest(`/api/datasets/${id}`, "DELETE");
+        showAlert("Dataset deleted successfully.");
+        loadDatasets();
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Evaluation Wizard
+    async function populateEvaluatorSelects() {
+      const models = await apiRequest("/api/models");
+      const datasets = await apiRequest("/api/datasets");
+      state.models = models;
+      state.datasets = datasets;
+
+      const mSelect = document.getElementById("evalModelSelect");
+      const dSelect = document.getElementById("evalDatasetSelect");
+
+      mSelect.innerHTML = `<option value="">-- Choose Model --</option>` + models.map(m => `<option value="${m.id}">${m.name} (${m.model_type})</option>`).join("");
+      dSelect.innerHTML = `<option value="">-- Choose Dataset --</option>` + datasets.map(d => `<option value="${d.id}">${d.name} (${d.row_count} rows)</option>`).join("");
+    }
+
+    async function onModelOrDatasetChange() {
+      const mId = document.getElementById("evalModelSelect").value;
+      const dId = document.getElementById("evalDatasetSelect").value;
+      const statusBox = document.getElementById("compatStatusBox");
+      const targetSelect = document.getElementById("evalTargetSelect");
+      const featuresBox = document.getElementById("evalFeaturesBox");
+
+      if (!mId || !dId) {
+        statusBox.classList.add("hidden");
+        return;
+      }
+
+      try {
+        const compat = await apiRequest(`/api/datasets/${dId}/compatibility`, "POST", { model_id: mId });
+        statusBox.classList.remove("hidden");
+
+        if (compat.compatible) {
+          statusBox.className = "p-4 rounded-xl border text-xs bg-green-50 text-green-800 border-green-200";
+          statusBox.innerHTML = `<strong>✅ Model and Dataset are Compatible!</strong> Expected features match dataset columns.`;
+        } else {
+          statusBox.className = "p-4 rounded-xl border text-xs bg-amber-50 text-amber-800 border-amber-200";
+          statusBox.innerHTML = `<strong>⚠️ Compatibility Warning:</strong> ${compat.issues.join("; ")}`;
+        }
+
+        // Set task type
+        document.getElementById("evalTypeSelect").value = compat.model_type === "regressor" ? "regression" : "classification";
+
+        // Populate Target column dropdown
+        targetSelect.innerHTML = `<option value="">-- Select Target Column --</option>` + compat.dataset_columns.map(col => `
+          <option value="${col}" ${col === compat.suggested_target_column ? 'selected' : ''}>${col}</option>
+        `).join("");
+
+        // Populate Feature Checkboxes
+        featuresBox.innerHTML = compat.dataset_columns.map(col => {
+          const isTarget = (col === compat.suggested_target_column);
+          const isChecked = !isTarget;
+          return `
+            <label class="flex items-center space-x-1.5 p-1 rounded hover:bg-slate-100 cursor-pointer">
+              <input type="checkbox" name="feature_col" value="${col}" ${isChecked ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="${isTarget ? 'text-blue-600 font-bold' : ''}">${col}</span>
+            </label>
+          `;
+        }).join("");
+
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function handleStartEvaluation(e) {
+      e.preventDefault();
+      const name = document.getElementById("evalNameInput").value;
+      const model_id = document.getElementById("evalModelSelect").value;
+      const dataset_id = document.getElementById("evalDatasetSelect").value;
+      const eval_type = document.getElementById("evalTypeSelect").value;
+      const target_column = document.getElementById("evalTargetSelect").value;
+
+      const checkedFeatures = Array.from(document.querySelectorAll("input[name='feature_col']:checked")).map(cb => cb.value).filter(c => c !== target_column);
+
+      if (checkedFeatures.length === 0) {
+        showAlert("Please select at least one feature column.", "error");
+        return;
+      }
+
+      try {
+        showAlert("Configuring evaluation job...", "success");
+        const evalConfig = await apiRequest("/api/evaluations", "POST", {
+          name,
+          model_id,
+          dataset_id,
+          eval_type,
+          target_column,
+          feature_columns: checkedFeatures
+        });
+
+        showAlert("Executing evaluation run in secure sandbox...", "success");
+        await apiRequest(`/api/evaluations/${evalConfig.id}/run`, "POST");
+        showAlert("Evaluation run completed successfully!");
+        viewEvaluationDetails(evalConfig.id);
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Results Inspector
+    async function viewEvaluationDetails(id) {
+      try {
+        const ev = await apiRequest(`/api/evaluations/${id}`);
+        state.selectedEvaluation = ev;
+
+        switchTab("results");
+        document.getElementById("resultsEmpty").classList.add("hidden");
+        document.getElementById("resultsContent").classList.remove("hidden");
+
+        document.getElementById("resEvalName").textContent = ev.name;
+        document.getElementById("resSubtitle").textContent = `ID: ${ev.id} | Type: ${ev.eval_type.toUpperCase()} | Model: ${ev.model_id} | Dataset: ${ev.dataset_id}`;
+        document.getElementById("resStatusBadge").textContent = ev.status.toUpperCase();
+
+        // Download report links
+        document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html`;
+        document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown`;
+        document.getElementById("btnDownloadJson").href = `/api/reports/${ev.id}/json`;
+
+        if (!ev.result) {
+          document.getElementById("metricsCardsGrid").innerHTML = `<div class="col-span-4 p-4 text-center text-slate-400">Evaluation status: ${ev.status}</div>`;
+          return;
+        }
+
+        const metrics = ev.result.metrics;
+        const grid = document.getElementById("metricsCardsGrid");
+
+        let cardsHtml = "";
+        for (const [k, v] of Object.entries(metrics)) {
+          if (typeof v === "number") {
+            const formatted = k.includes("accuracy") ? `${(v * 100).toFixed(2)}%` : v;
+            cardsHtml += `
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm">
+                <span class="text-xs font-bold text-blue-800 uppercase tracking-wider">${k.replace(/_/g, ' ')}</span>
+                <h4 class="text-2xl font-black text-blue-900 mt-2">${formatted}</h4>
+              </div>
+            `;
+          }
+        }
+        grid.innerHTML = cardsHtml;
+
+        // Visualizations
+        const vis = ev.result.visualizations;
+        if (vis.confusion_matrix) {
+          document.getElementById("plotTitle1").textContent = "Confusion Matrix Heatmap";
+          document.getElementById("plotImg1").src = vis.confusion_matrix;
+          document.getElementById("plotContainer1").classList.remove("hidden");
+        } else if (vis.actual_vs_predicted) {
+          document.getElementById("plotTitle1").textContent = "Actual vs Predicted Scatter Plot";
+          document.getElementById("plotImg1").src = vis.actual_vs_predicted;
+          document.getElementById("plotContainer1").classList.remove("hidden");
+        }
+
+        if (vis.roc_curve) {
+          document.getElementById("plotTitle2").textContent = "ROC Curve";
+          document.getElementById("plotImg2").src = vis.roc_curve;
+          document.getElementById("plotContainer2").classList.remove("hidden");
+        } else if (vis.residuals) {
+          document.getElementById("plotTitle2").textContent = "Residual Plot";
+          document.getElementById("plotImg2").src = vis.residuals;
+          document.getElementById("plotContainer2").classList.remove("hidden");
+        }
+
+        // Predictions Sample
+        const sampleBody = document.getElementById("predictionsSampleBody");
+        sampleBody.innerHTML = ev.result.predictions_sample.map(s => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-2.5 font-mono">${s.index}</td>
+            <td class="px-6 py-2.5 font-semibold">${s.actual}</td>
+            <td class="px-6 py-2.5 font-semibold text-blue-700">${s.predicted}</td>
+            <td class="px-6 py-2.5 font-mono">
+              ${s.correct !== null ? (s.correct ? '<span class="text-green-600 font-bold">✓ Match</span>' : '<span class="text-red-500 font-bold">✗ Error</span>') : `Error: ${s.error}`}
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Model Comparison
+    async function populateComparisonSelects() {
+      const history = await apiRequest("/api/history?status=completed");
+      const container = document.getElementById("comparisonSelectorList");
+      if (history.length === 0) {
+        container.innerHTML = `<p class="col-span-3 text-slate-400 text-sm">No completed evaluations found to compare.</p>`;
+        return;
+      }
+      container.innerHTML = history.map(h => `
+        <label class="flex items-center space-x-2 p-3 border rounded-xl hover:bg-slate-50 cursor-pointer bg-white">
+          <input type="checkbox" name="comp_eval" value="${h.id}" class="rounded text-blue-600">
+          <div class="text-xs">
+            <p class="font-bold text-slate-800">${h.name}</p>
+            <p class="text-slate-500">${h.model_name} &bull; ${h.eval_type}</p>
+          </div>
+        </label>
+      `).join("");
+    }
+
+    async function runComparison() {
+      const selected = Array.from(document.querySelectorAll("input[name='comp_eval']:checked")).map(cb => cb.value);
+      if (selected.length < 2) {
+        showAlert("Please select at least 2 evaluations to compare.", "error");
+        return;
+      }
+      try {
+        const comp = await apiRequest("/api/evaluations/compare", "POST", { evaluation_ids: selected });
+        document.getElementById("comparisonResultsBox").classList.remove("hidden");
+
+        // Winners banner
+        const winBox = document.getElementById("comparisonWinnersBox");
+        let winHtml = `<h4 class="font-bold text-blue-900 text-sm mb-2">🏆 Performance Leaderboard:</h4><div class="flex flex-wrap gap-3">`;
+        for (const [m, w] of Object.entries(comp.winners)) {
+          winHtml += `<span class="bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-xs font-semibold text-blue-800">
+            ${m.toUpperCase()}: <span class="text-blue-600">${w.model}</span> (${w.value})
+          </span>`;
+        }
+        winHtml += `</div>`;
+        winBox.innerHTML = winHtml;
+
+        // Render Table
+        const cTable = document.getElementById("comparisonTable");
+        const headers = ["Model", "Framework", ...comp.metric_keys, "Runtime (s)"];
+        let thead = `<thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b"><tr>${headers.map(h => `<th class="px-6 py-3">${h}</th>`).join("")}</tr></thead>`;
+        let tbody = `<tbody>${comp.comparison_table.map(row => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-3 font-semibold text-slate-800">${row.model_name}</td>
+            <td class="px-6 py-3">${row.framework}</td>
+            ${comp.metric_keys.map(k => `<td class="px-6 py-3 font-mono font-bold ${comp.winners[k]?.model === row.model_name ? 'text-green-600 bg-green-50' : ''}">${row[k] !== undefined ? row[k] : 'N/A'}</td>`).join("")}
+            <td class="px-6 py-3 font-mono text-xs">${row.execution_time}s</td>
+          </tr>
+        `).join("")}</tbody>`;
+        cTable.innerHTML = thead + tbody;
+
+        // Render Chart.js canvas
+        const ctx = document.getElementById("comparisonChartCanvas").getContext("2d");
+        if (state.comparisonChart) state.comparisonChart.destroy();
+
+        state.comparisonChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: comp.comparison_table.map(r => r.model_name),
+            datasets: comp.metric_keys.map((k, idx) => ({
+              label: k.toUpperCase(),
+              data: comp.comparison_table.map(r => r[k] || 0),
+              backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"][idx % 4]
+            }))
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // History Loader
+    async function loadHistory() {
+      const status = document.getElementById("historyStatusFilter")?.value || "";
+      const url = status ? `/api/history?status=${status}` : "/api/history";
+      try {
+        const history = await apiRequest(url);
+        const tbody = document.getElementById("historyTableBody");
+        if (history.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">No evaluation records in archive.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = history.map(h => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 font-semibold text-slate-800">${h.name}</td>
+            <td class="px-6 py-4">${h.model_name || 'N/A'}</td>
+            <td class="px-6 py-4">${h.dataset_name || 'N/A'}</td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${
+                h.status === 'completed' ? 'bg-green-100 text-green-800' :
+                h.status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+              }">${h.status}</span>
+            </td>
+            <td class="px-6 py-4 text-xs font-mono text-slate-500">${h.created_at.split('T')[0]}</td>
+            <td class="px-6 py-4 text-right space-x-2">
+              <button onclick="viewEvaluationDetails('${h.id}')" class="text-xs font-bold text-blue-600 hover:underline">Inspect</button>
+              <a href="/api/reports/${h.id}/html" target="_blank" class="text-xs text-slate-600 hover:underline">HTML</a>
+              <a href="/api/reports/${h.id}/markdown" target="_blank" class="text-xs text-slate-600 hover:underline">MD</a>
+              <a href="/api/reports/${h.id}/json" target="_blank" class="text-xs text-slate-600 hover:underline">JSON</a>
+            </td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // Admin Telemetry & Users
+    async function loadAdminData() {
+      try {
+        // System Health
+        const health = await apiRequest("/api/admin/system-health");
+        document.getElementById("telCpu").textContent = `${health.cpu_usage_percent}%`;
+        document.getElementById("telMem").textContent = `${health.memory_used_mb} / ${health.memory_total_mb} MB (${health.memory_usage_percent}%)`;
+        document.getElementById("telDisk").textContent = `${health.disk_free_gb} GB Free / ${health.disk_total_gb} GB`;
+
+        // Users
+        const users = await apiRequest("/api/admin/users");
+        const uBody = document.getElementById("adminUsersTableBody");
+        uBody.innerHTML = users.map(u => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-3 font-semibold text-slate-800">${u.username}</td>
+            <td class="px-6 py-3">${u.email}</td>
+            <td class="px-6 py-3 capitalize"><span class="px-2 py-0.5 rounded text-xs bg-slate-100 font-semibold">${u.role}</span></td>
+            <td class="px-6 py-3"><span class="text-green-600 text-xs font-bold">Active</span></td>
+            <td class="px-6 py-3 text-right">
+              <select onchange="updateUserRole('${u.id}', this.value)" class="text-xs border rounded p-1 bg-white">
+                <option value="evaluator" ${u.role === 'evaluator' ? 'selected' : ''}>Evaluator</option>
+                <option value="faculty" ${u.role === 'faculty' ? 'selected' : ''}>Faculty</option>
+                <option value="administrator" ${u.role === 'administrator' ? 'selected' : ''}>Admin</option>
+              </select>
+            </td>
+          </tr>
+        `).join("");
+
+        // Audit logs
+        const logs = await apiRequest("/api/admin/audit-logs");
+        const lBody = document.getElementById("adminAuditLogsBody");
+        lBody.innerHTML = logs.map(l => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2 text-slate-500">${l.timestamp.split('.')[0]}</td>
+            <td class="px-4 py-2 font-bold text-blue-800">${l.action}</td>
+            <td class="px-4 py-2 text-slate-700">${l.resource}</td>
+            <td class="px-4 py-2">${l.username || l.user_id || 'System'}</td>
+            <td class="px-4 py-2 text-slate-500 max-w-xs truncate">${l.details_json}</td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    async function updateUserRole(userId, newRole) {
+      try {
+        await apiRequest(`/api/admin/users/${userId}/role`, "PUT", { role: newRole });
+        showAlert(`User role updated to ${newRole}`);
+      } catch (err) {
+        showAlert(err.message, "error");
+      }
+    }
+
+    // App Initialization
+    window.addEventListener("DOMContentLoaded", () => {
+      renderAuthUI();
+      loadDashboard();
+    });
+  </script>
+</body>
+</html>
