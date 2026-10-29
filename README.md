@@ -74,3 +74,40 @@ Run the complete test suite verifying all 15 functional requirements and securit
 pytest tests/test_all_wme_srs.py -v
 ```
 All 8 verification suites pass with 100% specification compliance.
+
+
+## 📊 ML Evaluation Metrics
+
+The evaluation engine calculates performance metrics for classification and regression models.
+
+### Classification Metrics
+
+- **Accuracy:** Proportion of predictions that are correct.
+- **Precision:** Proportion of positive predictions that are correct. The default `precision` result uses macro averaging.
+- **Recall:** Proportion of actual positive cases identified correctly. The default `recall` result uses macro averaging.
+- **F1-score:** Harmonic mean of precision and recall. The default `f1_score` result uses macro averaging.
+- **Micro and weighted averages:** Additional precision, recall, and F1-score values are provided using micro and weighted averaging.
+- **Per-class metrics:** Precision, recall, F1-score, and support are reported for each class.
+- **Confusion matrix:** Shows counts of actual versus predicted classes.
+- **Sample count:** Number of evaluated observations.
+
+### Regression Metrics
+
+- **MAE (Mean Absolute Error):** Average absolute difference between actual and predicted values.
+- **MSE (Mean Squared Error):** Average squared prediction error.
+- **RMSE (Root Mean Squared Error):** Square root of MSE, expressed in the target variable's units.
+- **R² score:** Measures model performance relative to a baseline that predicts the target mean.
+- **Maximum error:** Largest absolute prediction error.
+- **Explained variance:** Measures how much variation in the target is explained by the predictions.
+- **Residual statistics:** Includes the mean and standard deviation of prediction residuals.
+- **Sample count:** Number of evaluated observations.
+
+### Running Metric Tests
+
+Run the dedicated metrics tests from the project root:
+
+```bash
+python -m pytest tests/test_metrics.py -v
+```
+
+The tests cover expected metric values, string classification labels, empty inputs, and mismatched input lengths.
