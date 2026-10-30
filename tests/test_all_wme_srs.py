@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from sklearn.datasets import load_iris, load_diabetes
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import accuracy_score, mean_squared_error
-
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
