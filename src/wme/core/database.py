@@ -8,8 +8,9 @@ from pathlib import Path
 from src.wme.core.config import DATABASE_PATH
 
 def get_db_connection():
-    """Returns a SQLite connection with row_factory enabled and parameterized queries."""
+    """Returns a SQLite connection with row_factory enabled, foreign keys ON, and parameterized queries."""
     conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
+    conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
 

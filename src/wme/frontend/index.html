@@ -1043,9 +1043,10 @@
         `).join("");
 
         // Populate Feature Checkboxes
+        const suggestedSet = new Set(compat.suggested_features || compat.expected_feature_names || []);
         featuresBox.innerHTML = compat.dataset_columns.map(col => {
           const isTarget = (col === compat.suggested_target_column);
-          const isChecked = !isTarget;
+          const isChecked = !isTarget && (suggestedSet.size > 0 ? suggestedSet.has(col) : true);
           return `
             <label class="flex items-center space-x-1.5 p-1 rounded hover:bg-slate-100 cursor-pointer">
               <input type="checkbox" name="feature_col" value="${col}" ${isChecked ? 'checked' : ''} class="rounded text-blue-600">
@@ -1129,10 +1130,11 @@
         document.getElementById("resSubtitle").textContent = `ID: ${ev.id} | Type: ${ev.eval_type.toUpperCase()} | Model: ${ev.model_id} | Dataset: ${ev.dataset_id}`;
         document.getElementById("resStatusBadge").textContent = ev.status.toUpperCase();
 
-        // Download report links
-        document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html`;
-        document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown`;
-        document.getElementById("btnDownloadJson").href = `/api/reports/${ev.id}/json`;
+        // Download report links (with token support for browser navigation)
+        const tokenQuery = state.token ? `?token=${encodeURIComponent(state.token)}` : '';
+        document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html${tokenQuery}`;
+        document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown${tokenQuery}`;
+        document.getElementById("btnDownloadJson").href = `/api/reports/${ev.id}/json${tokenQuery}`;
 
         if (!ev.result) {
           document.getElementById("metricsCardsGrid").innerHTML = `<div class="col-span-4 p-4 text-center text-slate-400">Evaluation status: ${ev.status}</div>`;
@@ -1287,6 +1289,7 @@
           tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">No evaluation records in archive.</td></tr>`;
           return;
         }
+        const tokenQuery = state.token ? `?token=${encodeURIComponent(state.token)}` : '';
         tbody.innerHTML = history.map(h => `
           <tr class="hover:bg-slate-50">
             <td class="px-6 py-4 font-semibold text-slate-800">${h.name}</td>
@@ -1301,9 +1304,9 @@
             <td class="px-6 py-4 text-xs font-mono text-slate-500">${h.created_at.split('T')[0]}</td>
             <td class="px-6 py-4 text-right space-x-2">
               <button onclick="viewEvaluationDetails('${h.id}')" class="text-xs font-bold text-blue-600 hover:underline">Inspect</button>
-              <a href="/api/reports/${h.id}/html" target="_blank" class="text-xs text-slate-600 hover:underline">HTML</a>
-              <a href="/api/reports/${h.id}/markdown" target="_blank" class="text-xs text-slate-600 hover:underline">MD</a>
-              <a href="/api/reports/${h.id}/json" target="_blank" class="text-xs text-slate-600 hover:underline">JSON</a>
+              <a href="/api/reports/${h.id}/html${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">HTML</a>
+              <a href="/api/reports/${h.id}/markdown${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">MD</a>
+              <a href="/api/reports/${h.id}/json${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">JSON</a>
             </td>
           </tr>
         `).join("");
