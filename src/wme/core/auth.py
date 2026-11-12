@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, Header, Depends, status
+from fastapi import HTTPException, Header, Query, Depends, status
 from src.wme.core.database import get_db_connection, hash_password, verify_password
 from src.wme.core.config import SESSION_TIMEOUT_MINUTES
 from src.wme.core.audit import log_audit_event
@@ -107,18 +107,19 @@ def logout_user(token: str) -> bool:
     conn.close()
     return True
 
-def get_current_user(authorization: str = Header(None)) -> dict:
-    """FastAPI dependency to extract and validate the authenticated user from the Authorization header."""
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing.")
+def get_current_user(authorization: str = Header(None), token: str = Query(None)) -> dict:
+    """FastAPI dependency to extract and validate the authenticated user from the Authorization header or query token."""
+    raw_token = authorization or token
+    if not raw_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header or token parameter missing.")
 
-    token = authorization
-    if token.lower().startswith("bearer "):
-        token = token[7:].strip()
+    session_token = raw_token
+    if session_token.lower().startswith("bearer "):
+        session_token = session_token[7:].strip()
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM sessions WHERE token = ?", (token,))
+    cursor.execute("SELECT * FROM sessions WHERE token = ?", (session_token,))
     session = cursor.fetchone()
 
     if not session:
@@ -128,7 +129,7 @@ def get_current_user(authorization: str = Header(None)) -> dict:
     # Check expiry (WME-SR-002)
     expires_at = datetime.fromisoformat(session["expires_at"])
     if datetime.now(timezone.utc) > expires_at:
-        cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        cursor.execute("DELETE FROM sessions WHERE token = ?", (session_token,))
         conn.commit()
         conn.close()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired. Please log in again.")
@@ -141,4 +142,6 @@ def get_current_user(authorization: str = Header(None)) -> dict:
     if not user or not user["is_active"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is inactive or not found.")
 
-    return dict(user)
+    user_data = dict(user)
+    user_data["session_token"] = session_token
+    return user_data

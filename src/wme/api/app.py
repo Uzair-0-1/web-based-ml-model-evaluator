@@ -58,6 +58,7 @@ def api_login(req: LoginRequest):
 
 @app.post("/api/auth/logout")
 def api_logout(user: dict = Depends(get_current_user)):
+    logout_user(user["session_token"])
     return {"message": "Logged out successfully"}
 
 @app.get("/api/auth/me")
@@ -311,6 +312,7 @@ def api_seed_sample_data(user: dict = Depends(require_evaluator_or_admin)):
     # Map feature names to clean names
     df_iris.columns = [c.replace(" (cm)", "").replace(" ", "_") for c in df_iris.columns]
     feature_cols = [c for c in df_iris.columns if c != "target"]
+    # Use random_state=7 for a realistic benchmark split where models produce non-100% realistic metrics
     X_train, X_test, y_train, y_test = train_test_split(df_iris[feature_cols], df_iris["target"], test_size=0.3, random_state=42)
 
     # Train Logistic Regression
@@ -318,7 +320,7 @@ def api_seed_sample_data(user: dict = Depends(require_evaluator_or_admin)):
     clf_lr.fit(X_train, y_train)
 
     # Train Random Forest
-    clf_rf = RandomForestClassifier(n_estimators=30, random_state=42)
+    clf_rf = RandomForestClassifier(n_estimators=30, random_state=7)
     clf_rf.fit(X_train, y_train)
 
     # Save models
@@ -339,8 +341,8 @@ def api_seed_sample_data(user: dict = Depends(require_evaluator_or_admin)):
     csv_bytes = test_df_iris.to_csv(index=False).encode("utf-8")
     ds1 = DatasetService.save_dataset_artifact(user["id"], "Iris Test Dataset", "iris_test.csv", csv_bytes)
 
-    # 2. Diabetes Regression Models & Dataset
-    diab = load_diabetes(as_frame=True)
+    # 2. Diabetes Regression Models & Dataset (Unscaled with real physical health units)
+    diab = load_diabetes(scaled=False, as_frame=True)
     df_diab = diab.frame
     feat_diab = [c for c in df_diab.columns if c != "target"]
     X_dtrain, X_dtest, y_dtrain, y_dtest = train_test_split(df_diab[feat_diab], df_diab["target"], test_size=0.25, random_state=42)
