@@ -138,18 +138,31 @@ class EvaluationEngine:
             if clean_df.empty:
                 raise ValueError("Dataset has no complete rows after dropping missing values.")
 
-            X = clean_df[feature_cols].values
+            # Keep DataFrame to preserve feature names and align order if model expects specific features
+            X_df = clean_df[feature_cols].copy()
+            if hasattr(model, "feature_names_in_") and model.feature_names_in_ is not None:
+                expected = [str(f) for f in model.feature_names_in_]
+                if set(expected) == set(feature_cols):
+                    X_df = X_df[expected]
+
             y_true = clean_df[target_col].values
 
             # Execute model predictions inside sandboxed timeout
             def _predict_op():
-                y_pred = model.predict(X)
+                try:
+                    y_pred = model.predict(X_df)
+                except Exception:
+                    y_pred = model.predict(X_df.values)
+
                 y_proba = None
                 if eval_type == "classification" and hasattr(model, "predict_proba"):
                     try:
-                        y_proba = model.predict_proba(X)
+                        y_proba = model.predict_proba(X_df)
                     except Exception:
-                        y_proba = None
+                        try:
+                            y_proba = model.predict_proba(X_df.values)
+                        except Exception:
+                            y_proba = None
                 return y_pred, y_proba
 
             y_pred, y_proba = SafeExecutionSandbox.run_with_timeout(_predict_op, timeout_seconds=45)

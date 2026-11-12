@@ -11,6 +11,10 @@
   <style>
     .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
     .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); }
+    /* Keep keyboard focus visible across the dashboard controls. */
+    :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    #navTabs { scrollbar-width: thin; }
+    @media (max-width: 640px) { #navTabs { gap: 1rem; padding-bottom: .25rem; } #navTabs button { flex: 0 0 auto; } }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
@@ -666,7 +670,14 @@
       const targetView = document.getElementById(`view-${tabName}`);
       const targetTab = document.getElementById(`tab-${tabName}`);
       if (targetView) targetView.classList.remove("hidden");
-      if (targetTab) targetTab.classList.add("tab-active");
+      if (targetTab) {
+        targetTab.classList.add("tab-active");
+        targetTab.setAttribute("aria-current", "page");
+      }
+      tabs.forEach(t => {
+        const tabEl = document.getElementById(`tab-${t}`);
+        if (tabEl && t !== tabName) tabEl.removeAttribute("aria-current");
+      });
 
       // Tab load hooks
       if (tabName === "dashboard") loadDashboard();
@@ -884,10 +895,19 @@
       e.preventDefault();
       const name = document.getElementById("modelNameInput").value;
       const file = document.getElementById("modelFileInput").files[0];
+      const allowedModelTypes = [".pkl", ".joblib", ".pt", ".pth", ".onnx"];
+      if (!file || !allowedModelTypes.some(ext => file.name.toLowerCase().endsWith(ext))) {
+        showAlert("Choose a supported model file (.pkl, .joblib, .pt, .pth, or .onnx).", "error");
+        return;
+      }
       const formData = new FormData();
       formData.append("name", name);
       formData.append("file", file);
 
+      const uploadButton = document.getElementById("btnUploadModel");
+      uploadButton.disabled = true;
+      uploadButton.textContent = "Uploading model...";
+      uploadButton.classList.add("opacity-60", "cursor-not-allowed");
       try {
         showAlert("Uploading and scanning model artifact...", "success");
         await apiRequest("/api/models/upload", "POST", formData, true);
@@ -896,6 +916,10 @@
         loadModels();
       } catch (err) {
         showAlert(err.message, "error");
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload & Validate Model";
+        uploadButton.classList.remove("opacity-60", "cursor-not-allowed");
       }
     }
 
@@ -941,10 +965,19 @@
       e.preventDefault();
       const name = document.getElementById("datasetNameInput").value;
       const file = document.getElementById("datasetFileInput").files[0];
+      const allowedDatasetTypes = [".csv", ".json", ".parquet"];
+      if (!file || !allowedDatasetTypes.some(ext => file.name.toLowerCase().endsWith(ext))) {
+        showAlert("Choose a supported dataset file (.csv, .json, or .parquet).", "error");
+        return;
+      }
       const formData = new FormData();
       formData.append("name", name);
       formData.append("file", file);
 
+      const uploadButton = document.getElementById("btnUploadDataset");
+      uploadButton.disabled = true;
+      uploadButton.textContent = "Uploading dataset...";
+      uploadButton.classList.add("opacity-60", "cursor-not-allowed");
       try {
         showAlert("Uploading and inspecting dataset structure...", "success");
         await apiRequest("/api/datasets/upload", "POST", formData, true);
@@ -953,6 +986,10 @@
         loadDatasets();
       } catch (err) {
         showAlert(err.message, "error");
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload & Validate Dataset";
+        uploadButton.classList.remove("opacity-60", "cursor-not-allowed");
       }
     }
 
@@ -1043,9 +1080,10 @@
         `).join("");
 
         // Populate Feature Checkboxes
+        const suggestedSet = new Set(compat.suggested_features || compat.expected_feature_names || []);
         featuresBox.innerHTML = compat.dataset_columns.map(col => {
           const isTarget = (col === compat.suggested_target_column);
-          const isChecked = !isTarget;
+          const isChecked = !isTarget && (suggestedSet.size > 0 ? suggestedSet.has(col) : true);
           return `
             <label class="flex items-center space-x-1.5 p-1 rounded hover:bg-slate-100 cursor-pointer">
               <input type="checkbox" name="feature_col" value="${col}" ${isChecked ? 'checked' : ''} class="rounded text-blue-600">
@@ -1137,6 +1175,11 @@
         document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html`;
         document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown`;
         document.getElementById("btnDownloadJson").href = `/api/reports/${ev.id}/json`;
+        // Download report links (with token support for browser navigation)
+        const tokenQuery = state.token ? `?token=${encodeURIComponent(state.token)}` : '';
+        document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html${tokenQuery}`;
+        document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown${tokenQuery}`;
+        document.getElementById("btnDownloadJson").href = `/api/reports/${ev.id}/json${tokenQuery}`;
 
         if (!ev.result) {
           document.getElementById("metricsCardsGrid").innerHTML = `<div class="col-span-4 p-4 text-center text-slate-400">Evaluation status: ${ev.status}</div>`;
@@ -1292,6 +1335,7 @@
           tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-slate-400">No evaluation records in archive.</td></tr>`;
           return;
         }
+        const tokenQuery = state.token ? `?token=${encodeURIComponent(state.token)}` : '';
         tbody.innerHTML = history.map(h => `
           <tr class="hover:bg-slate-50">
             <td class="px-6 py-4 font-semibold text-slate-800">${h.name}</td>
@@ -1306,9 +1350,9 @@
             <td class="px-6 py-4 text-xs font-mono text-slate-500">${h.created_at.split('T')[0]}</td>
             <td class="px-6 py-4 text-right space-x-2">
               <button onclick="viewEvaluationDetails('${h.id}')" class="text-xs font-bold text-blue-600 hover:underline">Inspect</button>
-              <a href="/api/reports/${h.id}/html" target="_blank" class="text-xs text-slate-600 hover:underline">HTML</a>
-              <a href="/api/reports/${h.id}/markdown" target="_blank" class="text-xs text-slate-600 hover:underline">MD</a>
-              <a href="/api/reports/${h.id}/json" target="_blank" class="text-xs text-slate-600 hover:underline">JSON</a>
+              <a href="/api/reports/${h.id}/html${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">HTML</a>
+              <a href="/api/reports/${h.id}/markdown${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">MD</a>
+              <a href="/api/reports/${h.id}/json${tokenQuery}" target="_blank" class="text-xs text-slate-600 hover:underline">JSON</a>
             </td>
           </tr>
         `).join("");
