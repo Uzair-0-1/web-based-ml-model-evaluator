@@ -1129,6 +1129,10 @@
         document.getElementById("resSubtitle").textContent = `ID: ${ev.id} | Type: ${ev.eval_type.toUpperCase()} | Model: ${ev.model_id} | Dataset: ${ev.dataset_id}`;
         document.getElementById("resStatusBadge").textContent = ev.status.toUpperCase();
 
+        // Reset optional panels so a previous evaluation cannot leave stale charts visible.
+        ["plotContainer1", "plotContainer2"].forEach(id => document.getElementById(id).classList.add("hidden"));
+        ["plotImg1", "plotImg2"].forEach(id => { document.getElementById(id).removeAttribute("src"); });
+
         // Download report links
         document.getElementById("btnDownloadHtml").href = `/api/reports/${ev.id}/html`;
         document.getElementById("btnDownloadMd").href = `/api/reports/${ev.id}/markdown`;
@@ -1139,7 +1143,7 @@
           return;
         }
 
-        const metrics = ev.result.metrics;
+        const metrics = ev.result.metrics || {};
         const grid = document.getElementById("metricsCardsGrid");
 
         let cardsHtml = "";
@@ -1154,7 +1158,7 @@
             `;
           }
         }
-        grid.innerHTML = cardsHtml;
+        grid.innerHTML = cardsHtml || `<p class="col-span-full p-4 text-center text-slate-400">No numeric metrics were returned for this evaluation.</p>`;
 
         // Visualizations
         const vis = ev.result.visualizations;
@@ -1180,7 +1184,8 @@
 
         // Predictions Sample
         const sampleBody = document.getElementById("predictionsSampleBody");
-        sampleBody.innerHTML = ev.result.predictions_sample.map(s => `
+        const predictionSamples = ev.result.predictions_sample || [];
+        sampleBody.innerHTML = predictionSamples.length ? predictionSamples.map(s => `
           <tr class="hover:bg-slate-50">
             <td class="px-6 py-2.5 font-mono">${s.index}</td>
             <td class="px-6 py-2.5 font-semibold">${s.actual}</td>
@@ -1189,7 +1194,7 @@
               ${s.correct !== null ? (s.correct ? '<span class="text-green-600 font-bold">✓ Match</span>' : '<span class="text-red-500 font-bold">✗ Error</span>') : `Error: ${s.error}`}
             </td>
           </tr>
-        `).join("");
+        `).join("") : `<tr><td colspan="4" class="px-6 py-4 text-center text-slate-400">No prediction samples are available.</td></tr>`;
 
       } catch (err) {
         showAlert(err.message, "error");
