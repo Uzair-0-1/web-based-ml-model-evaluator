@@ -11,6 +11,10 @@
   <style>
     .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
     .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); }
+    /* Keep keyboard focus visible across the dashboard controls. */
+    :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    #navTabs { scrollbar-width: thin; }
+    @media (max-width: 640px) { #navTabs { gap: 1rem; padding-bottom: .25rem; } #navTabs button { flex: 0 0 auto; } }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
