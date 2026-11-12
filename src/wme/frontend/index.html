@@ -666,7 +666,14 @@
       const targetView = document.getElementById(`view-${tabName}`);
       const targetTab = document.getElementById(`tab-${tabName}`);
       if (targetView) targetView.classList.remove("hidden");
-      if (targetTab) targetTab.classList.add("tab-active");
+      if (targetTab) {
+        targetTab.classList.add("tab-active");
+        targetTab.setAttribute("aria-current", "page");
+      }
+      tabs.forEach(t => {
+        const tabEl = document.getElementById(`tab-${t}`);
+        if (tabEl && t !== tabName) tabEl.removeAttribute("aria-current");
+      });
 
       // Tab load hooks
       if (tabName === "dashboard") loadDashboard();
