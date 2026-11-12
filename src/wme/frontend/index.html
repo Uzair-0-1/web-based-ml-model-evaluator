@@ -888,6 +888,11 @@
       e.preventDefault();
       const name = document.getElementById("modelNameInput").value;
       const file = document.getElementById("modelFileInput").files[0];
+      const allowedModelTypes = [".pkl", ".joblib", ".pt", ".pth", ".onnx"];
+      if (!file || !allowedModelTypes.some(ext => file.name.toLowerCase().endsWith(ext))) {
+        showAlert("Choose a supported model file (.pkl, .joblib, .pt, .pth, or .onnx).", "error");
+        return;
+      }
       const formData = new FormData();
       formData.append("name", name);
       formData.append("file", file);
@@ -945,6 +950,11 @@
       e.preventDefault();
       const name = document.getElementById("datasetNameInput").value;
       const file = document.getElementById("datasetFileInput").files[0];
+      const allowedDatasetTypes = [".csv", ".json", ".parquet"];
+      if (!file || !allowedDatasetTypes.some(ext => file.name.toLowerCase().endsWith(ext))) {
+        showAlert("Choose a supported dataset file (.csv, .json, or .parquet).", "error");
+        return;
+      }
       const formData = new FormData();
       formData.append("name", name);
       formData.append("file", file);
