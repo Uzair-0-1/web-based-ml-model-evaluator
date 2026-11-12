@@ -888,6 +888,10 @@
       formData.append("name", name);
       formData.append("file", file);
 
+      const uploadButton = document.getElementById("btnUploadModel");
+      uploadButton.disabled = true;
+      uploadButton.textContent = "Uploading model...";
+      uploadButton.classList.add("opacity-60", "cursor-not-allowed");
       try {
         showAlert("Uploading and scanning model artifact...", "success");
         await apiRequest("/api/models/upload", "POST", formData, true);
@@ -896,6 +900,10 @@
         loadModels();
       } catch (err) {
         showAlert(err.message, "error");
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload & Validate Model";
+        uploadButton.classList.remove("opacity-60", "cursor-not-allowed");
       }
     }
 
@@ -945,6 +953,10 @@
       formData.append("name", name);
       formData.append("file", file);
 
+      const uploadButton = document.getElementById("btnUploadDataset");
+      uploadButton.disabled = true;
+      uploadButton.textContent = "Uploading dataset...";
+      uploadButton.classList.add("opacity-60", "cursor-not-allowed");
       try {
         showAlert("Uploading and inspecting dataset structure...", "success");
         await apiRequest("/api/datasets/upload", "POST", formData, true);
@@ -953,6 +965,10 @@
         loadDatasets();
       } catch (err) {
         showAlert(err.message, "error");
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload & Validate Dataset";
+        uploadButton.classList.remove("opacity-60", "cursor-not-allowed");
       }
     }
 
