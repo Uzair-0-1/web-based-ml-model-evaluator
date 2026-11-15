@@ -105,3 +105,9 @@ def test_regression_metrics_reject_non_numeric_values():
             np.array([1.0, 2.0, 3.0])
         )
 
+def test_classification_metrics_reject_two_dimensional_inputs():
+    with pytest.raises(ValueError, match="one-dimensional"):
+        MetricCalculator.calculate_classification_metrics(
+            np.array([[0, 1], [1, 0]]),
+            np.array([[0, 1], [1, 0]])
+        )
