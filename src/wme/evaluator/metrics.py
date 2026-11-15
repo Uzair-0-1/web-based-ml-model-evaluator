@@ -11,6 +11,7 @@ from sklearn.metrics import (
     explained_variance_score,
     max_error
 )
+
 def _validate_metric_inputs(y_true, y_pred):
     """Validate target and prediction arrays before metric calculation."""
     y_true = np.asarray(y_true)
@@ -28,6 +29,27 @@ def _validate_metric_inputs(y_true, y_pred):
         )
 
     return y_true, y_pred
+
+
+def _validate_regression_inputs(y_true, y_pred):
+    """Validate regression inputs and reject non-finite values."""
+    y_true, y_pred = _validate_metric_inputs(y_true, y_pred)
+
+    try:
+        y_true = y_true.astype(float)
+        y_pred = y_pred.astype(float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Regression inputs must contain numeric values."
+        ) from exc
+
+    if not np.all(np.isfinite(y_true)) or not np.all(np.isfinite(y_pred)):
+        raise ValueError(
+            "Regression inputs must contain only finite values."
+        )
+
+    return y_true, y_pred
+
 class MetricCalculator:
     """
     Computes standard evaluation metrics for Classification and Regression models (WME-F-010, WME-F-011).
@@ -100,9 +122,7 @@ class MetricCalculator:
         """
         Calculates regression metrics: MAE, MSE, RMSE, R2-score, Max Error, Explained Variance (WME-F-011, TC-Metric-02).
         """
-        y_true, y_pred = _validate_metric_inputs(y_true, y_pred)
-        y_true = y_true.astype(float)
-        y_pred = y_pred.astype(float)
+        y_true, y_pred = _validate_regression_inputs(y_true, y_pred)
 
         mae = float(mean_absolute_error(y_true, y_pred))
         mse = float(mean_squared_error(y_true, y_pred))
@@ -125,3 +145,27 @@ class MetricCalculator:
             "mean_residual": round(float(np.mean(residuals)), 4),
             "std_residual": round(float(np.std(residuals)), 4)
         }
+
+def test_regression_metrics_reject_nan_values():
+    with pytest.raises(ValueError, match="finite values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array([1.0, np.nan, 3.0]),
+            np.array([1.0, 2.0, 3.0])
+        )
+
+
+def test_regression_metrics_reject_infinite_values():
+    with pytest.raises(ValueError, match="finite values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array([1.0, 2.0, 3.0]),
+            np.array([1.0, np.inf, 3.0])
+        )
+
+
+def test_regression_metrics_reject_non_numeric_values():
+    with pytest.raises(ValueError, match="numeric values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array(["one", "two", "three"]),
+            np.array([1.0, 2.0, 3.0])
+        )
+

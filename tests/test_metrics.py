@@ -81,3 +81,27 @@ def test_regression_metrics_reject_mismatched_lengths():
             np.array([1.0, 2.0, 3.0]),
             np.array([1.0, 2.0])
         )
+
+def test_regression_metrics_reject_nan_values():
+    with pytest.raises(ValueError, match="finite values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array([1.0, np.nan, 3.0]),
+            np.array([1.0, 2.0, 3.0])
+        )
+
+
+def test_regression_metrics_reject_infinite_values():
+    with pytest.raises(ValueError, match="finite values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array([1.0, 2.0, 3.0]),
+            np.array([1.0, np.inf, 3.0])
+        )
+
+
+def test_regression_metrics_reject_non_numeric_values():
+    with pytest.raises(ValueError, match="numeric values"):
+        MetricCalculator.calculate_regression_metrics(
+            np.array(["one", "two", "three"]),
+            np.array([1.0, 2.0, 3.0])
+        )
+
