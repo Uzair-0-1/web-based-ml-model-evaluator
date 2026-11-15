@@ -111,3 +111,20 @@ python -m pytest tests/test_metrics.py -v
 ```
 
 The tests cover expected metric values, string classification labels, empty inputs, and mismatched input lengths.
+## Metric Input Validation
+
+The ML evaluation engine validates inputs before calculating metrics.
+
+- Inputs must not be empty.
+- Actual and predicted arrays must be one-dimensional.
+- Both arrays must contain the same number of samples.
+- Regression inputs must contain numeric and finite values.
+- NaN and infinite values are rejected.
+- Invalid inputs raise descriptive ValueError exceptions.
+
+### Testing
+
+Run the metric tests using:
+
+```bash
+python -m pytest tests/test_metrics.py -v
